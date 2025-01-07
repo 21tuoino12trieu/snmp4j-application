@@ -1,0 +1,104 @@
+///////////////////////////////////////////////////////////////////////////////////////
+//
+//                 Gradle Template Summary
+//
+//   Frequently Used Command:
+//      [ gradle ]          Default task. same with 'gradle build'.
+//      [ gradle build ]    Compile/test your code, and create a jar file containing your main classes and resources.
+//
+////////////////////////////////////////////////////////////////////////////////////////
+
+// Plugins
+plugins {
+    id 'java'
+    id 'idea'
+    id 'maven-publish'
+}
+
+//--------------------------------- Basic settings for current project ---------------------------------
+
+// Java compatibility
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
+
+ext {
+    MODULE = "snmp4jdemo"
+    MAVEN_GROUP_ID = "com.logicmonitor"
+    MAVEN_ARTIFACT_ID = "snmp4jdemo"
+    MAVEN_VERSION = "0.1"
+}
+
+// Repositories
+repositories {
+    mavenCentral()
+}
+
+// Dependencies
+dependencies {
+    implementation 'org.snmp4j:snmp4j:3.6.0' // Thư viện SNMP4J
+    implementation 'org.snmp4j:snmp4j-agent:3.6.0' // Thư viện SNMP4J-Agent
+
+}
+
+//--------------------------------- Manifest configuration ---------------------------------
+
+ext.sharedManifest = manifest {
+    attributes(
+            'Module': "${MODULE}",
+            'Implementation-Title': "${project.name}",
+            'Built-Date': new Date().format("yyyy-MM-dd HH:mm:ss"),
+            'Built-With': "gradle-${project.gradle.gradleVersion}, groovy-${GroovySystem.getVersion()}",
+            'Created-By': "Java ${System.getProperty('java.version')} (${System.getProperty('java.vendor')})"
+    )
+}
+
+//--------------------------------- Task configuration ---------------------------------
+
+// Source set configuration to include all files under src
+sourceSets {
+    main {
+        java {
+            srcDirs = ['src'] // Bao gồm tất cả các tệp Java dưới thư mục src
+        }
+    }
+}
+
+// Fat JAR task
+task fatjar(type: Jar) {
+    manifest {
+        attributes(
+                'Main-Class': 'demo.examples.snmpwalk.TestSnmpWalkV1AndV2c' // Lớp chính cho ứng dụng
+        )
+    }
+    archiveBaseName.set("${MODULE}-all")
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+    with jar
+    exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA', 'module-info.class' // Loại bỏ các tệp trùng lặp
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE // Bỏ qua tệp trùng lặp
+}
+
+// Default tasks
+defaultTasks 'clean', 'test', 'fatjar'
+
+// Adjusting the build task
+tasks.named('build') {
+    dependsOn 'clean', 'test', 'fatjar'
+}
+
+// Test task configuration
+test {
+    ignoreFailures = true
+    reports.html.destination = file("$buildDir/test-reports")
+}
+
+// Task to create Java project structure
+task createJavaProject {
+    doLast {
+        sourceSets*.java.srcDirs*.each { it.mkdirs() }
+        sourceSets*.resources.srcDirs*.each { it.mkdirs() }
+    }
+}
